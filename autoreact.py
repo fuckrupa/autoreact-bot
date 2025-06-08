@@ -22,7 +22,7 @@ print(f"🔧 Loaded {len(BOT_TOKENS)} bot tokens")
 def get_bot_username(bot_token):
     try:
         print(f"📡 Fetching username for bot: {bot_token[:10]}...")
-        resp = requests.get(f"https://api.telegram.org/bot{bot_token}/getMe", timeout=3)
+        resp = requests.get(f"https://api.telegram.org/bot{bot_token}/getMe", timeout=5)
         username = resp.json()["result"]["username"]
         print(f"✅ Bot username: @{username}")
         return username
@@ -37,7 +37,8 @@ def set_commands(bot_token):
     try:
         requests.post(
             f"https://api.telegram.org/bot{bot_token}/setMyCommands",
-            json={"commands": commands}
+            json={"commands": commands},
+            timeout=5
         )
         print(f"✅ /start command set for bot {bot_token[:10]}")
     except Exception as e:
@@ -68,12 +69,13 @@ def handle_start(bot_token, chat_id, bot_username):
     payload = {
         "chat_id": chat_id,
         "text": text,
-        "reply_markup": json.dumps(keyboard)
+        "reply_markup": keyboard
     }
     try:
-        resp = requests.post(
+        requests.post(
             f"https://api.telegram.org/bot{bot_token}/sendMessage",
-            json=payload
+            json=payload,
+            timeout=5
         )
         print(f"✅ Welcome message sent to chat {chat_id}")
     except Exception as e:
@@ -82,19 +84,21 @@ def handle_start(bot_token, chat_id, bot_username):
 # ─── Reaction Logic ─────────────────────────────────────────────────────────────
 
 def get_updates(bot_token, offset=None):
-    params = {"timeout": 1, "allowed_updates": ["message"]}
+    params = {"timeout": 10, "allowed_updates": ["message"]}
     if offset:
         params["offset"] = offset
-    try:
-        r = requests.get(
-            f"https://api.telegram.org/bot{bot_token}/getUpdates",
-            params=params,
-            timeout=3
-        )
-        return r.json().get("result", [])
-    except Exception as e:
-        print(f"❌ Error fetching updates for bot {bot_token[:10]}: {e}")
-        return []
+    for attempt in range(3):
+        try:
+            r = requests.get(
+                f"https://api.telegram.org/bot{bot_token}/getUpdates",
+                params=params,
+                timeout=10
+            )
+            return r.json().get("result", [])
+        except Exception as e:
+            print(f"❌ Attempt {attempt+1}: Error fetching updates for bot {bot_token[:10]}: {e}")
+            time.sleep(2)
+    return []
 
 def send_reaction(bot_token, chat_id, message_id, emoji):
     payload = {
@@ -106,7 +110,7 @@ def send_reaction(bot_token, chat_id, message_id, emoji):
         requests.post(
             f"https://api.telegram.org/bot{bot_token}/setMessageReaction",
             json=payload,
-            timeout=2
+            timeout=5
         )
         print(f"✨ Reaction '{emoji}' sent to message {message_id} in chat {chat_id}")
     except Exception as e:
@@ -115,7 +119,11 @@ def send_reaction(bot_token, chat_id, message_id, emoji):
 def react_thread(bot_token, chat_id, message_id):
     emoji = random.choice(EMOJIS)
     print(f"🌀 Launching reaction thread with emoji: {emoji}")
-    threading.Thread(target=send_reaction, args=(bot_token, chat_id, message_id, emoji)).start()
+    threading.Thread(
+        target=send_reaction,
+        args=(bot_token, chat_id, message_id, emoji),
+        daemon=True
+    ).start()
 
 # ─── Worker for Each Bot ───────────────────────────────────────────────────────
 
@@ -124,19 +132,17 @@ def bot_worker(bot_token):
     if not bot_username:
         print(f"⚠️ Skipping bot {bot_token[:10]} (username fetch failed)")
         return
-
     set_commands(bot_token)
     offset = None
     print(f"🤖 Bot @{bot_username} is running...")
-
     while True:
         updates = get_updates(bot_token, offset)
         for update in updates:
-            offset = update["update_id"] + 1
+            offset = update.get("update_id", 0) + 1
             msg = update.get("message")
             if not msg:
                 continue
-            chat_id = msg["chat"]["id"]
+            chat_id = msg.get("chat", {}).get("id")
             text = msg.get("text", "")
             message_id = msg.get("message_id")
             if text.strip().lower() == "/start":
@@ -150,7 +156,11 @@ def bot_worker(bot_token):
 def main():
     threads = []
     for token in BOT_TOKENS:
-        t = threading.Thread(target=bot_worker, args=(token.strip(),))
+        t = threading.Thread(
+            target=bot_worker,
+            args=(token.strip(),),
+            daemon=True
+        )
         t.start()
         threads.append(t)
         print(f"🧵 Started thread for bot {token[:10]}")
