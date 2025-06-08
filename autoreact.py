@@ -110,12 +110,11 @@ def get_updates(bot_token, offset=None):
             time.sleep(2)
     return []
 
-def send_reaction(bot_token, chat_id, message_id, emojis):
-    reactions = [{"type": "emoji", "emoji": emoji} for emoji in emojis]
+def send_reaction(bot_token, chat_id, message_id, emoji):
     payload = {
         "chat_id": chat_id,
         "message_id": message_id,
-        "reaction": json.dumps(reactions)
+        "reaction": json.dumps([{"type": "emoji", "emoji": emoji}])
     }
     try:
         requests.post(
@@ -123,16 +122,16 @@ def send_reaction(bot_token, chat_id, message_id, emojis):
             json=payload,
             timeout=5
         )
-        print(f"✨ Reactions {emojis} sent to message {message_id} in chat {chat_id}")
+        print(f"✨ Reaction '{emoji}' sent to message {message_id} in chat {chat_id}")
     except Exception as e:
         print(f"❌ Failed to react: {e}")
 
 def react_thread(bot_token, chat_id, message_id):
-    emojis = random.sample(EMOJIS, 3)  # Adjust the number of reactions here
-    print(f"🌀 Launching reaction thread with emojis: {emojis}")
+    emoji = random.choice(EMOJIS)
+    print(f"🌀 Launching reaction thread with emoji: {emoji}")
     threading.Thread(
         target=send_reaction,
-        args=(bot_token, chat_id, message_id, emojis),
+        args=(bot_token, chat_id, message_id, emoji),
         daemon=True
     ).start()
 
