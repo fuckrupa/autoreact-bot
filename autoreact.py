@@ -13,7 +13,14 @@ load_dotenv()
 BOT_TOKENS = os.environ.get("BOT_TOKENS", "").split(",")
 CHANNEL_URL = os.environ.get("CHANNEL_URL", "https://t.me/example")
 GROUP_URL = os.environ.get("GROUP_URL", "https://t.me/example_group")
-EMOJIS = ["❤️", "👍", "😆", "🔥", "🎉"]
+EMOJIS = [
+    "❤️", "👍", "🔥", "🥰", "👏", "😁", "🤔", "🤯", "😱", "🤬", "😢", "🎉",
+    "🤩", "🤮", "💩", "🙏", "👌", "🕊️", "🤡", "🥱", "🥴", "😍", "🐳", "❤️‍🔥",
+    "🌚", "🌭", "💯", "🤣", "⚡", "🍌", "🏆", "💔", "🤨", "😐", "🍓", "🍾",
+    "💋", "🖕", "😈", "😴", "😭", "🤓", "👻", "👨‍💻", "👀", "🎃", "🙈", "😇",
+    "😨", "🤝", "✍️", "🤗", "🫡", "🎅", "🎄", "☃️", "💅", "🤪", "🗿", "🆒",
+    "💘", "🙉", "🦄", "😘", "💊", "🙊", "😎", "👾", "🤷‍♂️", "🤷", "🤷‍♀️", "😡"
+]
 
 print(f"🔧 Loaded {len(BOT_TOKENS)} bot tokens")
 
@@ -49,8 +56,10 @@ def set_commands(bot_token):
 def handle_start(bot_token, chat_id, bot_username):
     print(f"🚀 /start received in chat {chat_id} for @{bot_username}")
     text = (
-        "👋 Welcome! I'm ReactionBot.\n"
-        "I automatically react to your messages with fun emojis!"
+        "👋 Hey there! I'm <b>ReactionBot</b>.\n\n"
+        "I automatically react to messages in your group with fun and random emojis like ❤️🔥🎉👌.\n"
+        "Just add me to your group and enjoy the reactions!\n"
+        "P.S. I work best when I have a little admin magic 😉"
     )
     keyboard = {
         "inline_keyboard": [
@@ -69,6 +78,7 @@ def handle_start(bot_token, chat_id, bot_username):
     payload = {
         "chat_id": chat_id,
         "text": text,
+        "parse_mode": "HTML",  # Important to render <b>
         "reply_markup": keyboard
     }
     try:
